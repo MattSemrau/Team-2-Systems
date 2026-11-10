@@ -1,0 +1,85 @@
+
+name: Email Notification on New Commits
+
+on:
+  create: 
+  push:
+
+jobs:
+  send-email:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send email for each commit
+        env:
+          SMTP_SERVER: smtp.gmail.com
+          SMTP_PORT: 587
+          SMTP_USERNAME: se320team2notify@gmail.com
+          SMTP_PASSWORD: Qwerty987!
+          NOTIFY_EMAIL: lostinabrams@hotmail.com
+          EVENT_PATH: ${{ github.event_path }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import os
+          import json
+          import smtplib
+          from email.message import EmailMessage
+
+          # Read information about the push
+          with open(os.environ["EVENT_PATH"]) as f:
+              event = json.load(f)
+
+          commits = event.get("commits", [])
+
+          # Send one email for each commit
+          for commit in commits:
+              commit_id = commit["id"]
+              message_text = commit["message"]
+              author = commit.get("author", {}).get("name", "Unknown")
+              timestamp = commit.get("timestamp", "Unknown")
+
+              commit_url = (
+                  f"https://github.com/"
+                  f"{os.environ['REPOSITORY']}/commit/{commit_id}"
+              )
+
+              email = EmailMessage()
+              email["Subject"] = (
+                  f"New Commit: {os.environ['REPOSITORY']}"
+              )
+              email["From"] = os.environ["SMTP_USERNAME"]
+              email["To"] = os.environ["NOTIFY_EMAIL"]
+
+              email.set_content(f"""
+          A new commit was pushed to your GitHub repository!
+
+          Repository: {os.environ['REPOSITORY']}
+          Author: {author}
+          Commit ID: {commit_id}
+          Date: {timestamp}
+
+          Commit Message:
+          {message_text}
+
+          View Commit:
+          {commit_url}
+          """)
+
+              # Connect to Gmail and send email
+              with smtplib.SMTP(
+                  os.environ["SMTP_SERVER"],
+                  int(os.environ["SMTP_PORT"])
+              ) as server:
+                  server.starttls()
+                  server.login(
+                      os.environ["SMTP_USERNAME"],
+                      os.environ["SMTP_PASSWORD"]
+                  )
+                  server.send_message(email)
+
+              print(f"Email sent for commit: {commit_id}")
+
+          if not commits:
+              print("No commits found in this push event.")
+          PY
