@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Install Python dependencies
         run: |
-          py -m pip install google-api-python-client google-auth
+          pip install google-api-python-client google-auth
 
       - name: Send Gmail notifications
         env:
