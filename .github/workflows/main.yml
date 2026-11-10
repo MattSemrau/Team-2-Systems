@@ -6,27 +6,114 @@ on:
       - '**' # Triggers on push to any branch
 
 jobs:
-  send_mail:
+  send-email:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
-      - name: Send mail
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: ${{ secrets.MAIL_SERVER }}
-          server_port: ${{ secrets.MAIL_PORT }}
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "New push to ${{ github.repository }} by ${{ github.actor }}"
-          body: |
-            A new commit/push was made to ${{ github.repository }}.
-            
-            Pushed by: ${{ github.actor }}
-            Commit message: ${{ github.event.head_commit.message }}
-            Branch: ${{ github.ref_name }}
-            
-            View commit: ${{ github.event.head_commit.url }}
-          to: lostinabrams@hotmail.com
-          from: "GitHub Actions <${{ secrets.MAIL_USERNAME }}>"
+    steps:
+      - name: Install Python dependencies
+        run: |
+          py -m pip install google-api-python-client google-auth
+
+      - name: Send Gmail notifications
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+
+        run: |
+          python - <<'PY'
+          import os
+          import json
+          import base64
+
+          from email.message import EmailMessage
+          from google.oauth2.credentials import Credentials
+          from googleapiclient.discovery import build
+
+          # OAuth configuration
+          SCOPES = [
+              "https://www.googleapis.com/auth/gmail.send"
+          ]
+
+          credentials = Credentials(
+              token=None,
+              refresh_token=os.environ["GOOGLE_REFRESH_TOKEN"],
+              token_uri="https://oauth2.googleapis.com/token",
+              client_id=os.environ["GOOGLE_CLIENT_ID"],
+              client_secret=os.environ["GOOGLE_CLIENT_SECRET"],
+              scopes=SCOPES
+          )
+
+          # Connect to Gmail API
+          service = build(
+              "gmail",
+              "v1",
+              credentials=credentials
+          )
+
+          print("Gmail OAuth authentication successful!")
+
+          # Read GitHub event information
+          with open(os.environ["GITHUB_EVENT_PATH"]) as f:
+              event = json.load(f)
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          commits = event.get("commits", [])
+
+          if not commits:
+              print("No commits found.")
+              raise SystemExit(0)
+
+          # Send an email for every commit
+          for commit in commits:
+
+              commit_id = commit["id"]
+              message = commit["message"]
+
+              author = commit.get("author", {}).get(
+                  "name", "Unknown"
+              )
+
+              commit_url = (
+                  f"https://github.com/{repository}"
+                  f"/commit/{commit_id}"
+              )
+
+              email = EmailMessage()
+
+              email["To"] = os.environ["NOTIFY_EMAIL"]
+              email["From"] = os.environ["SENDER_EMAIL"]
+              email["Subject"] = f"New Commit: {repository}"
+
+              email.set_content(f"""
+          A new commit was pushed to GitHub!
+
+          Repository: {repository}
+
+          Author: {author}
+
+          Commit ID: {commit_id}
+
+          Commit Message:
+          {message}
+
+          View Commit:
+          {commit_url}
+          """)
+
+              encoded_message = base64.urlsafe_b64encode(
+                  email.as_bytes()
+              ).decode()
+
+              result = service.users().messages().send(
+                  userId="me",
+                  body={"raw": encoded_message}
+              ).execute()
+
+              print(
+                  f"Email successfully sent: {result['id']}"
+              )
+
+          PY
