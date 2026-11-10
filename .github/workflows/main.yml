@@ -1,95 +1,32 @@
-
-name: Email Notification on New Commits
+name: Send Email on Push
 
 on:
-  create: 
   push:
+    branches:
+      - '**' # Triggers on push to any branch
 
 jobs:
-  send-email:
+  send_mail:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Send email for each commit
-        env:
-          SMTP_SERVER: smtp.gmail.com
-          SMTP_PORT: 587
-          SMTP_USERNAME: se320team2notify@gmail.com
-          SMTP_PASSWORD: Qwerty987!
-          NOTIFY_EMAIL: lostinabrams@hotmail.com
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-        run: |
-          python - <<'PY'
-          import os
-          import json
-          import smtplib
-          from email.message import EmailMessage
-
-          # Use GitHub's built-in environment variables
-          event_path = os.environ["GITHUB_EVENT_PATH"]
-          repository = os.environ["GITHUB_REPOSITORY"]
-
-          print("Reading event file:", event_path)
-          print("Repository:", repository)
-
-          # Read GitHub push event
-          with open(event_path) as f:
-              event = json.load(f)
-
-          commits = event.get("commits", [])
-
-          if not commits:
-              print("No commits found.")
-              exit(0)
-
-          for commit in commits:
-              commit_id = commit["id"]
-              message_text = commit["message"]
-              author = commit.get("author", {}).get(
-                  "name", "Unknown"
-              )
-              timestamp = commit.get("timestamp", "Unknown")
-
-              commit_url = (
-                  f"https://github.com/{repository}"
-                  f"/commit/{commit_id}"
-              )
-
-              email = EmailMessage()
-
-              email["Subject"] = f"New Commit: {repository}"
-              email["From"] = os.environ["SMTP_USERNAME"]
-              email["To"] = os.environ["NOTIFY_EMAIL"]
-
-              email.set_content(f"""
-          A new commit was pushed!
-
-          Repository: {repository}
-          Author: {author}
-          Commit ID: {commit_id}
-          Date: {timestamp}
-
-          Commit Message:
-          {message_text}
-
-          View Commit:
-          {commit_url}
-          """)
-
-              with smtplib.SMTP(
-                  os.environ["SMTP_SERVER"],
-                  int(os.environ["SMTP_PORT"])
-              ) as server:
-
-                  server.starttls()
-
-                  server.login(
-                      os.environ["SMTP_USERNAME"],
-                      os.environ["SMTP_PASSWORD"]
-                  )
-
-                  server.send_message(email)
-
-              print(f"Email sent for commit: {commit_id}")
-
-          PY
+      - name: Send mail
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "New push to ${{ github.repository }} by ${{ github.actor }}"
+          body: |
+            A new commit/push was made to ${{ github.repository }}.
+            
+            Pushed by: ${{ github.actor }}
+            Commit message: ${{ github.event.head_commit.message }}
+            Branch: ${{ github.ref_name }}
+            
+            View commit: ${{ github.event.head_commit.url }}
+          to: lostinabrams@hotmail.com
+          from: "GitHub Actions <${{ secrets.MAIL_USERNAME }}>"
