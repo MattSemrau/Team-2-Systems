@@ -48,7 +48,7 @@ jobs:
               email["Subject"] = (
                   f"New Commit: {os.environ['REPOSITORY']}"
               )
-              email["From"] = os.environ["SMTP_USERNAME"]
+              email["From"] = os.environ["se320team2@gmail.com"]
               email["To"] = os.environ["NOTIFY_EMAIL"]
 
               email.set_content(f"""
@@ -73,8 +73,8 @@ jobs:
               ) as server:
                   server.starttls()
                   server.login(
-                      os.environ["SMTP_USERNAME"],
-                      os.environ["SMTP_PASSWORD"]
+                      os.environ["se320team2notify@gmail.com"],
+                      os.environ["Qwerty987!"]
                   )
                   server.send_message(email)
 
