@@ -17,8 +17,7 @@ jobs:
           SMTP_USERNAME: se320team2notify@gmail.com
           SMTP_PASSWORD: Qwerty987!
           NOTIFY_EMAIL: lostinabrams@hotmail.com
-          EVENT_PATH: ${{ github.event_path }}
-          REPOSITORY: ${{ github.repository }}
+
         run: |
           python - <<'PY'
           import os
@@ -26,35 +25,46 @@ jobs:
           import smtplib
           from email.message import EmailMessage
 
-          # Read information about the push
-          with open(os.environ["EVENT_PATH"]) as f:
+          # Use GitHub's built-in environment variables
+          event_path = os.environ["GITHUB_EVENT_PATH"]
+          repository = os.environ["GITHUB_REPOSITORY"]
+
+          print("Reading event file:", event_path)
+          print("Repository:", repository)
+
+          # Read GitHub push event
+          with open(event_path) as f:
               event = json.load(f)
 
           commits = event.get("commits", [])
 
-          # Send one email for each commit
+          if not commits:
+              print("No commits found.")
+              exit(0)
+
           for commit in commits:
               commit_id = commit["id"]
               message_text = commit["message"]
-              author = commit.get("author", {}).get("name", "Unknown")
+              author = commit.get("author", {}).get(
+                  "name", "Unknown"
+              )
               timestamp = commit.get("timestamp", "Unknown")
 
               commit_url = (
-                  f"https://github.com/"
-                  f"{os.environ['REPOSITORY']}/commit/{commit_id}"
+                  f"https://github.com/{repository}"
+                  f"/commit/{commit_id}"
               )
 
               email = EmailMessage()
-              email["Subject"] = (
-                  f"New Commit: {os.environ['REPOSITORY']}"
-              )
-              email["From"] = os.environ["se320team2@gmail.com"]
+
+              email["Subject"] = f"New Commit: {repository}"
+              email["From"] = os.environ["SMTP_USERNAME"]
               email["To"] = os.environ["NOTIFY_EMAIL"]
 
               email.set_content(f"""
-          A new commit was pushed to your GitHub repository!
+          A new commit was pushed!
 
-          Repository: {os.environ['REPOSITORY']}
+          Repository: {repository}
           Author: {author}
           Commit ID: {commit_id}
           Date: {timestamp}
@@ -66,20 +76,20 @@ jobs:
           {commit_url}
           """)
 
-              # Connect to Gmail and send email
               with smtplib.SMTP(
                   os.environ["SMTP_SERVER"],
                   int(os.environ["SMTP_PORT"])
               ) as server:
+
                   server.starttls()
+
                   server.login(
-                      os.environ["se320team2notify@gmail.com"],
-                      os.environ["Qwerty987!"]
+                      os.environ["SMTP_USERNAME"],
+                      os.environ["SMTP_PASSWORD"]
                   )
+
                   server.send_message(email)
 
               print(f"Email sent for commit: {commit_id}")
 
-          if not commits:
-              print("No commits found in this push event.")
           PY
