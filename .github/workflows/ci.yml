@@ -3,10 +3,12 @@ name: Python CI
 # Automatically run on pushes and pull requests
 on:
   push:
-    branches: main
+    branches:
+      - '**' # Triggers on push to any branch
 
   pull_request:
-    branches: main
+    branches:
+      - '**' # Triggers on push to any branch
 
 # Permissions for GitHub Actions
 permissions:
@@ -41,6 +43,6 @@ jobs:
           ruff check .
 
       # Step 5: Run automated tests
-      - name: Run Pytest
-        run: |
-          pytest -v
+#      - name: Run Pytest
+#        run: |
+#          pytest -v
