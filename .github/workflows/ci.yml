@@ -1,0 +1,46 @@
+name: Python CI
+
+# Automatically run on pushes and pull requests
+on:
+  push:
+    branches: main
+
+  pull_request:
+    branches: main
+
+# Permissions for GitHub Actions
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    name: Lint and Test Python Code
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Download repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Install Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Step 4: Lint Python files
+      - name: Run Ruff Linter
+        run: |
+          ruff check .
+
+      # Step 5: Run automated tests
+      - name: Run Pytest
+        run: |
+          pytest -v
