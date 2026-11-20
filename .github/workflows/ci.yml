@@ -3,10 +3,12 @@ name: Python CI
 # Automatically run on pushes and pull requests
 on:
   push:
-    branches: main
+    branches:
+      - '**' # Triggers on push to any branch
 
   pull_request:
-    branches: main
+    branches:
+      - '**' # Triggers on push to any branch
 
 # Permissions for GitHub Actions
 permissions:
