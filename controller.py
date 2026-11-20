@@ -38,9 +38,7 @@ class EquipmentAPI:
 
         reading = readings.get(sensor_id)
         if not isinstance(reading, dict):
-            raise TypeError(
-                f"{sensor_id!r} was not present in GET /api/{category}"
-            )
+            raise TypeError(f"{sensor_id!r} was not present in GET /api/{category}")
         return reading
 
     def post_and_verify(
@@ -79,9 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--weight", type=float, default=1.0, help="Simulated station weight"
     )
-    parser.add_argument(
-        "--ph", type=float, default=7.0, help="Simulated pH reading"
-    )
+    parser.add_argument("--ph", type=float, default=7.0, help="Simulated pH reading")
     parser.add_argument("--ph-min", type=float, default=6.5)
     parser.add_argument("--ph-max", type=float, default=8.5)
     parser.add_argument("--target-volume", type=float, default=10.0)
@@ -173,9 +169,7 @@ def run_cycle(api: EquipmentAPI, args: argparse.Namespace) -> None:
         closed_valve = api.post_and_verify("valves", args.valve_id, valve)
         api.post_and_verify("pumps", args.pump_id, pump_reading)
 
-        pressure = api.get(
-            f"/api/pressure-check/{args.pump_id}/{args.valve_id}"
-        )
+        pressure = api.get(f"/api/pressure-check/{args.pump_id}/{args.valve_id}")
         if pressure.get("comparison") != "completed":
             raise RuntimeError("Pump/valve pressure comparison did not complete")
 
@@ -203,9 +197,7 @@ def run_cycle(api: EquipmentAPI, args: argparse.Namespace) -> None:
             api.post("/api/pumps", pump_reading)
             confirmed_pump = api.get_equipment("pumps", args.pump_id)
             if confirmed_pump.get("volume_reading") != volume:
-                raise RuntimeError(
-                    f"Pump volume {volume} was not confirmed by the API"
-                )
+                raise RuntimeError(f"Pump volume {volume} was not confirmed by the API")
             LOGGER.info("Pumped volume: %.2f / %.2f", volume, args.target_volume)
 
         pump_reading["sensor_status"] = "ready"

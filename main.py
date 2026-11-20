@@ -1,9 +1,9 @@
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Literal
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-
 
 # =====================================================
 # APPLICATION
@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 app = FastAPI(
     title="Sensor Equipment API - Version 2",
     description="Centralized API and simulated device communication",
-    version="2.0.0"
+    version="2.0.0",
 )
 
 
@@ -23,6 +23,7 @@ def current_time():
 # =====================================================
 # SENSOR STATUS
 # =====================================================
+
 
 class SensorStatus(str, Enum):
     READY = "ready"
@@ -36,6 +37,7 @@ class SensorStatus(str, Enum):
 # BASE SENSOR MODEL
 # =====================================================
 
+
 class SensorBase(BaseModel):
     sensor_id: str
     sensor_status: SensorStatus
@@ -45,6 +47,7 @@ class SensorBase(BaseModel):
 # =====================================================
 # EQUIPMENT MODELS
 # =====================================================
+
 
 class Pump(SensorBase):
     sensor_type: Literal["Pump"] = "Pump"
@@ -62,9 +65,7 @@ class Probe(SensorBase):
 
 class Actuator(SensorBase):
     sensor_type: Literal["Actuator"] = "Actuator"
-    position_state: Literal[
-        "Extended", "Retracted", "Modulating"
-    ]
+    position_state: Literal["Extended", "Retracted", "Modulating"]
     position_percentage: float = Field(ge=0, le=100)
 
 
@@ -84,10 +85,10 @@ class Station(SensorBase):
     tank_detector: Literal["Normal", "Leak", "Burst", "Unknown"]
 
 
-
 # =====================================================
 # DEVICE MESSAGE MODEL
 # =====================================================
+
 
 class DeviceMessage(BaseModel):
     message_type: str
@@ -99,13 +100,7 @@ class DeviceMessage(BaseModel):
 # =====================================================
 
 # Latest sensor reading for each device
-readings = {
-    "pumps": {},
-    "probes": {},
-    "actuators": {},
-    "valves": {},
-    "stations": {}
-}
+readings = {"pumps": {}, "probes": {}, "actuators": {}, "valves": {}, "stations": {}}
 
 # Device ID -> equipment category
 device_registry = {}
@@ -118,6 +113,7 @@ device_inboxes = {}
 # CENTRAL STORAGE FUNCTION
 # =====================================================
 
+
 def save_reading(category, data):
 
     sensor_id = data.sensor_id
@@ -129,8 +125,7 @@ def save_reading(category, data):
 
     if existing_type and existing_type != category:
         raise HTTPException(
-            status_code=409,
-            detail="Sensor ID already belongs to another device type"
+            status_code=409, detail="Sensor ID already belongs to another device type"
         )
 
     # Save latest reading
@@ -143,7 +138,7 @@ def save_reading(category, data):
         "message": "Sensor reading received successfully",
         "sensor_id": sensor_id,
         "sensor_type": category,
-        "data": readings[category][sensor_id]
+        "data": readings[category][sensor_id],
     }
 
 
@@ -151,19 +146,17 @@ def save_reading(category, data):
 # CENTRAL HEALTH CHECK
 # =====================================================
 
+
 @app.get("/health")
 def health_check():
 
-    return {
-        "server": "online",
-        "version": "2.0.0",
-        "timestamp": current_time()
-    }
+    return {"server": "online", "version": "2.0.0", "timestamp": current_time()}
 
 
 # =====================================================
 # PUMP ENDPOINTS
 # =====================================================
+
 
 @app.post("/api/pumps")
 def receive_pump(data: Pump):
@@ -179,6 +172,7 @@ def get_pumps():
 # PROBE ENDPOINTS
 # =====================================================
 
+
 @app.post("/api/probes")
 def receive_probe(data: Probe):
     return save_reading("probes", data)
@@ -192,6 +186,7 @@ def get_probes():
 # =====================================================
 # ACTUATOR ENDPOINTS
 # =====================================================
+
 
 @app.post("/api/actuators")
 def receive_actuator(data: Actuator):
@@ -207,6 +202,7 @@ def get_actuators():
 # VALVE ENDPOINTS
 # =====================================================
 
+
 @app.post("/api/valves")
 def receive_valve(data: Valve):
     return save_reading("valves", data)
@@ -220,6 +216,7 @@ def get_valves():
 # =====================================================
 # STATION ENDPOINTS
 # =====================================================
+
 
 @app.post("/api/stations")
 def receive_station(data: Station):
@@ -235,12 +232,13 @@ def get_stations():
 # CENTRAL DEVICE REGISTRY
 # =====================================================
 
+
 @app.get("/api/devices")
 def get_all_devices():
 
     return {
         "registered_devices": device_registry,
-        "total_devices": len(device_registry)
+        "total_devices": len(device_registry),
     }
 
 
@@ -259,22 +257,19 @@ def get_device(sensor_id: str):
 # CENTRAL SYSTEM OVERVIEW
 # =====================================================
 
+
 @app.get("/api/overview")
 def system_overview():
 
     overview = {}
 
     for category, devices in readings.items():
-
-        overview[category] = {
-            "total": len(devices),
-            "devices": list(devices.values())
-        }
+        overview[category] = {"total": len(devices), "devices": list(devices.values())}
 
     return {
         "server_status": "online",
         "total_devices": len(device_registry),
-        "equipment": overview
+        "equipment": overview,
     }
 
 
@@ -282,12 +277,9 @@ def system_overview():
 # DIRECT DEVICE-TO-DEVICE MESSAGING
 # =====================================================
 
+
 @app.post("/api/devices/{source_id}/send/{target_id}")
-def send_device_message(
-    source_id: str,
-    target_id: str,
-    message: DeviceMessage
-):
+def send_device_message(source_id: str, target_id: str, message: DeviceMessage):
 
     # Verify sender unless it is the central server
     if source_id != "CENTRAL_SERVER" and source_id not in device_registry:
@@ -303,7 +295,7 @@ def send_device_message(
         "target_id": target_id,
         "message_type": message.message_type,
         "payload": message.payload,
-        "timestamp": current_time().isoformat()
+        "timestamp": current_time().isoformat(),
     }
 
     # Store latest received message
@@ -312,7 +304,7 @@ def send_device_message(
     return {
         "message": "Device message delivered",
         "delivery_status": "success",
-        "data": message_data
+        "data": message_data,
     }
 
 
@@ -320,21 +312,20 @@ def send_device_message(
 # DEVICE INBOX
 # =====================================================
 
+
 @app.get("/api/devices/{sensor_id}/inbox")
 def get_device_inbox(sensor_id: str):
 
     if sensor_id not in device_registry:
         raise HTTPException(404, "Device not registered")
 
-    return {
-        "sensor_id": sensor_id,
-        "latest_message": device_inboxes.get(sensor_id)
-    }
+    return {"sensor_id": sensor_id, "latest_message": device_inboxes.get(sensor_id)}
 
 
 # =====================================================
 # PUMP AND VALVE PRESSURE COMPARISON
 # =====================================================
+
 
 @app.get("/api/pressure-check/{pump_id}/{valve_id}")
 def pressure_check(pump_id: str, valve_id: str):
@@ -360,13 +351,14 @@ def pressure_check(pump_id: str, valve_id: str):
         "valve_pressure": valve_pressure,
         "pressure_difference": difference,
         "comparison": "completed",
-        "note": "Comparison only. No equipment control performed."
+        "note": "Comparison only. No equipment control performed.",
     }
 
 
 # =====================================================
 # SIMULATION RESET
 # =====================================================
+
 
 @app.delete("/api/simulation/reset")
 def reset_simulation():
@@ -377,7 +369,4 @@ def reset_simulation():
     device_registry.clear()
     device_inboxes.clear()
 
-    return {
-        "message": "Simulation data cleared",
-        "status": "success"
-    }
+    return {"message": "Simulation data cleared", "status": "success"}
