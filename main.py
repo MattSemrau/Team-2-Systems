@@ -1,8 +1,6 @@
-
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from enum import Enum
 from typing import Literal
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
@@ -19,7 +17,7 @@ app = FastAPI(
 
 
 def current_time():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 # =====================================================
@@ -292,9 +290,8 @@ def send_device_message(
 ):
 
     # Verify sender unless it is the central server
-    if source_id != "CENTRAL_SERVER":
-        if source_id not in device_registry:
-            raise HTTPException(404, "Source device not registered")
+    if source_id != "CENTRAL_SERVER" and source_id not in device_registry:
+        raise HTTPException(404, "Source device not registered")
 
     # Verify recipient
     if target_id not in device_registry:
@@ -374,7 +371,7 @@ def pressure_check(pump_id: str, valve_id: str):
 @app.delete("/api/simulation/reset")
 def reset_simulation():
 
-    for category in readings:
+    for category, value in readings.item()
         readings[category].clear()
 
     device_registry.clear()
