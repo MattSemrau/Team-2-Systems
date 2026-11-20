@@ -371,7 +371,7 @@ def pressure_check(pump_id: str, valve_id: str):
 @app.delete("/api/simulation/reset")
 def reset_simulation():
 
-    for category, value in readings.item()
+    for category, value in readings.item():
         readings[category].clear()
 
     device_registry.clear()
