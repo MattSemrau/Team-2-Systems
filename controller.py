@@ -8,7 +8,6 @@ import argparse
 import logging
 import time
 from typing import Any
-
 import httpx
 
 
@@ -35,11 +34,11 @@ class EquipmentAPI:
     def get_equipment(self, category: str, sensor_id: str) -> dict[str, Any]:
         readings = self.get(f"/api/{category}")
         if not isinstance(readings, dict):
-            raise RuntimeError(f"GET /api/{category} did not return an object")
+            raise TypeError(f"GET /api/{category} did not return an object")
 
         reading = readings.get(sensor_id)
         if not isinstance(reading, dict):
-            raise RuntimeError(
+            raise TypeError(
                 f"{sensor_id!r} was not present in GET /api/{category}"
             )
         return reading
